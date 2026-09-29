@@ -1,0 +1,28 @@
+services:
+  postgres:
+    image: postgres:17
+    environment:
+      POSTGRES_USER: invariant
+      POSTGRES_PASSWORD: invariant
+      POSTGRES_DB: invariant
+    ports: ["5432:5432"]
+    volumes: [pgdata:/var/lib/postgresql/data]
+
+  postgres-test:
+    image: postgres:17
+    environment:
+      POSTGRES_USER: invariant
+      POSTGRES_PASSWORD: invariant
+      POSTGRES_DB: invariant_test
+    ports: ["5433:5432"]
+    tmpfs: [/var/lib/postgresql/data]   # throwaway, fast, wiped on restart
+
+  redis:
+    image: redis:8
+    command: ["redis-server", "--appendonly", "yes", "--maxmemory-policy", "noeviction"]
+    ports: ["6379:6379"]
+    volumes: [redisdata:/data]
+
+volumes:
+  pgdata:
+  redisdata:
