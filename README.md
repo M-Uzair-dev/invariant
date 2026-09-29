@@ -1,98 +1,73 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# Invariant
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+A small payment processor (a mini Stripe) built to prove one thing: **no matter what crashes, and when, money is never lost, never created, never charged twice, and the store always finds out.**
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+There are no real cards or banks. Balances are fake, but the system is built as if the money were real.
 
-## Description
+## How it works
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+- **Users** hold a balance, funded through a top-up endpoint.
+- **Stores** hold a balance, a hashed secret API key, and a webhook URL.
+- A store creates a payment (`POST /payments`, idempotent via `Idempotency-Key`). The user approves it on a hosted checkout page. Money moves from the user to the store in a single Postgres transaction, and the store is notified by a signed webhook.
 
-## Project setup
+Webhooks go through a **transactional outbox**. The event row is written in the same transaction as the money movement, and a separate worker delivers it with at-least-once semantics, retries, and a dead-letter state. Stores can also poll `GET /payments/:id` as a fallback.
 
-```bash
-$ npm install
-```
+## Invariants
 
-## Compile and run the project
+Every test and every code change is checked against these:
 
-```bash
-# development
-$ npm run start
+1. **Conservation:** all ledger entries sum to zero.
+2. **Balances match the ledger:** each cached balance equals the sum of its entries.
+3. **At most once:** a payment is charged at most once, however many approvals arrive.
+4. **Double entry:** every succeeded payment has exactly one debit and one credit.
+5. **No overdraft:** a user balance never goes negative.
+6. **Legal transitions only:** `pending → succeeded | failed | expired`, and terminal states are final.
+7. **Every status change owes a webhook:** the outbox event is written in the same transaction.
+8. **Idempotency:** the same key returns the original response, and the same key with a different body is rejected.
 
-# watch mode
-$ npm run start:dev
+## Roadmap
 
-# production mode
-$ npm run start:prod
-```
+- [ ] **Phase 1: money moves correctly.** Accounts, top-ups, API keys, idempotent payment creation, approval, and the ledger, with concurrency tests.
+- [ ] **Phase 2: stores find out reliably.** Outbox, delivery worker, retries, dead letter, replay, signing, and expiry.
+- [ ] **Phase 3: prove it survives failure.** Reconciliation plus chaos tests that kill the process mid-approval and mid-delivery.
+- [ ] **Phase 4: fix the hot row.** Load test many users paying one store, and remove the contention on the store's balance row.
+- [ ] **Phase 5 (optional): go distributed.** Split services and add tracing.
 
-## Run tests
+## Stack
+
+NestJS · TypeScript · PostgreSQL · Prisma 7 (pg driver adapter) · Redis · BullMQ · Jest
+
+## Running locally
+
+Requires Node.js and Docker.
 
 ```bash
-# unit tests
-$ npm run test
-
-# e2e tests
-$ npm run test:e2e
-
-# test coverage
-$ npm run test:cov
+docker compose up -d          # Postgres (dev :5432, test :5433) and Redis (:6379)
+npm install
 ```
 
-## Deployment
+Create a `.env` file:
 
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
+```
+DATABASE_URL=postgresql://invariant:invariant@localhost:5432/invariant
+REDIS_HOST=localhost
+REDIS_PORT=6379
+```
 
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+Then:
 
 ```bash
-$ npm install -g @nestjs/mau
-$ mau deploy
+npx prisma generate
+npm run start:dev
 ```
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+Tests:
 
-## Resources
+```bash
+npm test          # unit
+npm run test:e2e  # end to end
+```
 
-Check out a few resources that may come in handy when working with NestJS:
+## Author
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
-
-## Support
-
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
-
-## Stay in touch
-
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
-
-## License
-
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+Uzair Manan · [uzairmanan3@gmail.com](mailto:uzairmanan3@gmail.com)
