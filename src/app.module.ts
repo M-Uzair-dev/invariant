@@ -16,7 +16,7 @@ import { RedisModule } from './utils/redis/redis.module';
       useFactory: (config: ConfigService) => ({
         connection: {
           host: config.getOrThrow<string>('REDIS_HOST'),
-          port: config.getOrThrow<number>('REDIS_PORT'),
+          port: Number(config.getOrThrow('REDIS_PORT')),
         },
       }),
     }),

@@ -1,4 +1,5 @@
-import { Global, Module } from '@nestjs/common';
+import { Global, Inject, Module, OnModuleDestroy } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { Redis } from 'ioredis';
 
 @Global()
@@ -6,13 +7,20 @@ import { Redis } from 'ioredis';
   providers: [
     {
       provide: 'REDIS_CLIENT',
-      useFactory: () =>
-        new Redis({
-          port: Number(process.env.REDIS_PORT) || 6379,
-          host: process.env.REDIS_HOST || '127.0.0.1',
-        }),
+      inject: [ConfigService],
+      useFactory: (config: ConfigService) => {
+        return new Redis({
+          port: Number(config.getOrThrow('REDIS_PORT')),
+          host: config.getOrThrow('REDIS_HOST'),
+        });
+      },
     },
   ],
   exports: ['REDIS_CLIENT'],
 })
-export class RedisModule {}
+export class RedisModule implements OnModuleDestroy {
+  constructor(@Inject('REDIS_CLIENT') private readonly redis: Redis) {}
+  async onModuleDestroy() {
+    await this.redis.quit();
+  }
+}
