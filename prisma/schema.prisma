@@ -11,3 +11,143 @@ generator client {
 datasource db {
   provider = "postgresql"
 }
+
+enum AccountType {
+  USER
+  STORE
+  SYSTEM
+}
+
+enum TransferType {
+  PAYMENT
+  TOPUP
+}
+
+enum PaymentStatus {
+  PENDING
+  SUCCESS
+  EXPIRED
+}
+
+enum WebhookStatus {
+  PENDING
+  DELIVERED
+  FAILED
+}
+
+model Account {
+  id String @id @default(uuid())
+  balanceCents BigInt @default(0) // CHECK(balanceCents >= 0 || type == SYSTEM)
+  type AccountType
+
+  debitTransfers Transfer[] @relation("debitLedgers")
+  creditTransfers Transfer[] @relation("creditLedgers")
+  user User?
+  store Store? 
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt()
+}
+
+model User {
+  id String @id @default(uuid())
+  name String
+  email String @unique
+  passwordHash String 
+
+  accountId String @unique
+  account Account @relation(references: [id], fields: [accountId], onDelete: Restrict)
+  payments Payment[]
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt()
+}
+
+model Store {
+  id String @id @default(uuid())
+  name String
+  email String @unique
+  passwordHash String 
+  secretKeyHash String @unique
+
+  webhookUrl String
+  webhookSigningSecret String
+  webhookAlertOwedAt DateTime?
+  webhookAlertSentAt DateTime?
+
+  accountId String @unique
+  account Account @relation(references: [id], fields: [accountId], onDelete: Restrict)
+  payments Payment[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt()
+}
+
+model Payment {
+  id String @id @default(uuid())
+  status PaymentStatus
+  amountCents BigInt // CHECK(amountCents > 0)
+  idempotencyKey String
+  returnUrl String
+  orderId String
+  requestHash String
+  
+  storeId String
+  store Store @relation(fields: [storeId], references: [id])
+  userId String?
+  user User? @relation(fields: [userId], references: [id], onDelete: Restrict)
+  transfer Transfer? 
+  webhookEvent WebhookEvent?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt() 
+  expiresAt DateTime
+
+  @@unique([idempotencyKey, storeId])
+  // CHECK IF status is SUCCESS <=> the userId is set.
+  // Add partial index for storeId and OrderId, when status is PENDING or SUCCESS
+}
+
+model Transfer {
+  id String @id @default(uuid())
+  amountCents BigInt // CHECK(amountCents > 0)
+  type TransferType
+  topupIdempotencyKey String? 
+  requestHash String?
+
+  fromAccountId String
+  from Account @relation("debitLedgers", references: [id], fields: [fromAccountId], onDelete: Restrict)
+  toAccountId String
+  to Account @relation("creditLedgers", references: [id], fields: [toAccountId], onDelete: Restrict)
+  createdAt DateTime @default(now())
+
+  paymentId String? @unique
+  payment Payment? @relation(fields: [paymentId], references: [id], onDelete: Restrict)
+
+  // CHECK fromAccountId != toAccountId
+  // CHECK comment: PAYMENT <=> paymentId is set
+  // CHECK TOPUP <=> the key is set.
+  @@unique([toAccountId, topupIdempotencyKey])
+}
+
+model WebhookEvent {
+  id String @id @default(uuid())
+  status WebhookStatus @default(PENDING)
+  
+  lockedUntil DateTime?
+  lastTried DateTime?
+  nextAttemptAt DateTime @default(now())
+  attempts Int @default(0)
+  
+  lastError String?
+  lastResponseStatus Int?
+  deliveredAt DateTime?
+
+  paymentId String @unique
+  payment Payment @relation(references: [id], fields: [paymentId], onDelete: Restrict)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt()
+
+  @@index([status, nextAttemptAt])
+}
