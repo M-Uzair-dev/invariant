@@ -70,7 +70,7 @@ model Store {
   passwordHash String 
   secretKeyHash String @unique
 
-  webhookUrl String
+  webhookUrl String?
   webhookSigningSecret String
   webhookAlertOwedAt DateTime?
   webhookAlertSentAt DateTime?

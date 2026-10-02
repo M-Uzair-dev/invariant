@@ -41,7 +41,7 @@ CREATE TABLE "Store" (
     "email" TEXT NOT NULL,
     "passwordHash" TEXT NOT NULL,
     "secretKeyHash" TEXT NOT NULL,
-    "webhookUrl" TEXT NOT NULL,
+    "webhookUrl" TEXT,
     "webhookSigningSecret" TEXT NOT NULL,
     "webhookAlertOwedAt" TIMESTAMP(3),
     "webhookAlertSentAt" TIMESTAMP(3),
