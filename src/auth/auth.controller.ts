@@ -2,9 +2,10 @@ import { Body, Controller, HttpCode, Post, UseGuards } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { UserSignupDto } from './dto/userSignup.dto';
 import { UserLoginDto } from './dto/userLogin.dto';
-import { AuthGuard } from '../utils/guards/auth.guard';
 import { CurrentUser } from '../utils/decorators/user.param';
 import { Auth } from '../utils/decorators/auth.decorator';
+import { StoreLoginDto } from './dto/storeLogin.dto';
+import { StoreSignupDto } from './dto/storeSignup.dto';
 
 @Controller()
 export class AuthController {
@@ -21,10 +22,20 @@ export class AuthController {
   }
 
   @Auth('STORE', 'USER')
-  @Post('logout-user')
+  @Post('logout')
   @HttpCode(204)
   async userLogout(@CurrentUser('sessionKey') sessionKey: string) {
-    await this.authService.userLogout(sessionKey);
+    await this.authService.logout(sessionKey);
     return;
+  }
+
+  @Post('login-store')
+  storeLogin(@Body() data: StoreLoginDto) {
+    return this.authService.storeLogin(data.email, data.password);
+  }
+
+  @Post('signup-store')
+  storeSignup(@Body() data: StoreSignupDto) {
+    return this.authService.storeSignup(data.name, data.email, data.password);
   }
 }

@@ -6,6 +6,8 @@ import { PrismaModule } from './utils/prisma/prisma.module';
 import { BullModule } from '@nestjs/bullmq';
 import { RedisModule } from './utils/redis/redis.module';
 import { AuthModule } from './auth/auth.module';
+import { StoreModule } from './store/store.module';
+import { ProfileModule } from './profile/profile.module';
 
 @Module({
   imports: [
@@ -24,6 +26,8 @@ import { AuthModule } from './auth/auth.module';
     PrismaModule,
     RedisModule,
     AuthModule,
+    StoreModule,
+    ProfileModule,
   ],
   controllers: [AppController],
   providers: [AppService],

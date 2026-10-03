@@ -67,7 +67,7 @@ export class AuthService {
     }
   }
 
-  async userLogout(sessionKey: string) {
+  async logout(sessionKey: string) {
     return await this.tokenService.deleteToken(sessionKey);
   }
 
@@ -102,6 +102,24 @@ export class AuthService {
         }
       }
       throw e;
+    }
+  }
+  async storeLogin(email: string, password: string) {
+    const store = await this.prisma.store.findUnique({
+      where: {
+        email: email.toLowerCase(),
+      },
+    });
+    if (store) {
+      const match = await bcrypt.compare(password, store.passwordHash);
+      if (!match) {
+        throw new UnauthorizedException('Invalid Credentials.');
+      }
+      const token = await this.tokenService.generateToken(store.id, 'STORE');
+      return { token };
+    } else {
+      await bcrypt.compare('IamThePassword', dummyHash);
+      throw new UnauthorizedException('Invalid Credentials.');
     }
   }
 }
