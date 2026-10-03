@@ -7,7 +7,7 @@ import { Auth } from '../utils/decorators/auth.decorator';
 import { StoreLoginDto } from './dto/storeLogin.dto';
 import { StoreSignupDto } from './dto/storeSignup.dto';
 
-@Controller()
+@Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 

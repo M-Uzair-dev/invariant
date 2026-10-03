@@ -8,6 +8,7 @@ import { RedisModule } from './utils/redis/redis.module';
 import { AuthModule } from './auth/auth.module';
 import { StoreModule } from './store/store.module';
 import { ProfileModule } from './profile/profile.module';
+import { PaymentModule } from './payment/payment.module';
 
 @Module({
   imports: [
@@ -28,6 +29,7 @@ import { ProfileModule } from './profile/profile.module';
     AuthModule,
     StoreModule,
     ProfileModule,
+    PaymentModule,
   ],
   controllers: [AppController],
   providers: [AppService],

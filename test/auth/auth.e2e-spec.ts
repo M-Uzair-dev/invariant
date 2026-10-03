@@ -20,10 +20,10 @@ describe('Auth (e2e)', () => {
 
   const http = () => request(app.getHttpServer());
 
-  describe('POST /signup-user', () => {
+  describe('POST /auth/signup-user', () => {
     it('creates a user and returns a session token', async () => {
       const res = await http()
-        .post('/signup-user')
+        .post('/auth/signup-user')
         .send({ name: 'Ali', email: 'ali@test.com', password: 'secret123' })
         .expect(201);
 
@@ -36,33 +36,33 @@ describe('Auth (e2e)', () => {
         email: 'ali@test.com',
         password: 'secret123',
       };
-      await http().post('/signup-user').send(body).expect(201);
+      await http().post('/auth/signup-user').send(body).expect(201);
 
-      await http().post('/signup-user').send(body).expect(409);
+      await http().post('/auth/signup-user').send(body).expect(409);
     });
 
     it('treats emails case-insensitively', async () => {
       await http()
-        .post('/signup-user')
+        .post('/auth/signup-user')
         .send({ name: 'Ali', email: 'Ali@Test.com', password: 'secret123' })
         .expect(201);
 
       await http()
-        .post('/signup-user')
+        .post('/auth/signup-user')
         .send({ name: 'Ali', email: 'ali@test.com', password: 'secret123' })
         .expect(409);
     });
   });
 
-  describe('POST /logout', () => {
+  describe('POST /auth/logout', () => {
     it('kills the session: the same token is rejected afterwards', async () => {
       const { body } = await http()
-        .post('/signup-user')
+        .post('/auth/signup-user')
         .send({ name: 'Ali', email: 'ali@test.com', password: 'secret123' });
       const auth = `Bearer ${body.token}`;
 
-      await http().post('/logout').set('Authorization', auth).expect(204);
-      await http().post('/logout').set('Authorization', auth).expect(401);
+      await http().post('/auth/logout').set('Authorization', auth).expect(204);
+      await http().post('/auth/logout').set('Authorization', auth).expect(401);
     });
   });
 });

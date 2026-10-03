@@ -6,7 +6,7 @@ import { UpdateNameDto } from './dto/updateName.dto';
 import { ChangePasswordDto } from './dto/changePassword.dto';
 
 @Auth('USER', 'STORE')
-@Controller('me')
+@Controller('profile')
 export class ProfileController {
   constructor(private readonly profileService: ProfileService) {}
 
