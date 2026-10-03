@@ -89,12 +89,12 @@ export class PaymentService {
           });
           if (!newPayment) {
             throw new ConflictException(
-              'an active payment already exists for this orderId',
+              'An active payment already exists for this orderId.',
             );
           }
           if (requestHash !== newPayment.requestHash) {
             throw new UnprocessableEntityException(
-              'OrderId already used by anohter payment.',
+              'Idempotency key already in use with a different request.',
             );
           }
           const { requestHash: _, ...rest } = newPayment;
