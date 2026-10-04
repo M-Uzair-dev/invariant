@@ -44,3 +44,6 @@ ALTER TABLE "WebhookEvent" ADD CONSTRAINT "WebhookEvent_deliveredAt_iff_delivere
 CREATE UNIQUE INDEX "Payment_storeId_orderId_active_key"
     ON "Payment"("storeId", "orderId")
     WHERE "status" IN ('PENDING', 'SUCCESS');
+
+
+CREATE UNIQUE INDEX "Account_single_system_key" ON "Account"(type) WHERE type = 'SYSTEM';
