@@ -3,6 +3,8 @@ import {
   Body,
   Controller,
   Headers,
+  Param,
+  ParseUUIDPipe,
   Post,
   UseGuards,
 } from '@nestjs/common';
@@ -11,6 +13,8 @@ import { CurrentStore } from '../utils/decorators/store.param';
 import type { AuthStore } from '../utils/decorators/store.param';
 import { PaymentService } from './payment.service';
 import { CreatePaymentDto } from './dto/createPayment.dto';
+import { Auth } from '../utils/decorators/auth.decorator';
+import { CurrentUser } from '../utils/decorators/user.param';
 
 @Controller('payments')
 export class PaymentController {
@@ -32,5 +36,14 @@ export class PaymentController {
       idempotencyKey,
       dto,
     );
+  }
+
+  @Auth('USER')
+  @Post(':id/approve')
+  approvePayment(
+    @CurrentUser('userId') userId: string,
+    @Param('id', ParseUUIDPipe) paymentId: string,
+  ) {
+    return this.paymentService.approvePayment(userId, paymentId);
   }
 }

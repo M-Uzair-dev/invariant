@@ -7,6 +7,7 @@ import { PrismaService } from '../utils/prisma/prisma.service';
 import { ensureSystemAccount } from '../../prisma/ensureSystemAccount';
 import { createHash } from 'crypto';
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime/client';
+import { UserType } from '../types/userRolesType';
 
 @Injectable()
 export class AccountService {
@@ -122,5 +123,21 @@ export class AccountService {
         } else throw e;
       } else throw e;
     }
+  }
+
+  async getAccountBalance(userId: string, userType: UserType) {
+    const owner =
+      userType === 'USER'
+        ? await this.prisma.user.findUnique({
+            where: { id: userId },
+            select: { account: { select: { balanceCents: true } } },
+          })
+        : await this.prisma.store.findUnique({
+            where: { id: userId },
+            select: { account: { select: { balanceCents: true } } },
+          });
+    if (!owner)
+      throw new UnauthorizedException('Invalid Id, please login again.');
+    return { balanceCents: Number(owner.account.balanceCents) };
   }
 }

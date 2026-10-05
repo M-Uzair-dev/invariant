@@ -2,11 +2,12 @@ import {
   BadRequestException,
   Body,
   Controller,
+  Get,
   Headers,
   Post,
 } from '@nestjs/common';
 import { Auth } from '../utils/decorators/auth.decorator';
-import { CurrentUser } from '../utils/decorators/user.param';
+import { CurrentUser, type AuthUser } from '../utils/decorators/user.param';
 import { AccountService } from './account.service';
 import { TopupDto } from './dto/topup.dto';
 
@@ -30,5 +31,11 @@ export class AccountController {
       dto.amountCents,
       idempotencyKey,
     );
+  }
+
+  @Auth('USER', 'STORE')
+  @Get('balance')
+  getBalance(@CurrentUser() user: AuthUser) {
+    return this.accountService.getAccountBalance(user.userId, user.userType);
   }
 }

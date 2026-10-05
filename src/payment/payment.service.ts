@@ -2,6 +2,9 @@ import {
   BadRequestException,
   ConflictException,
   Injectable,
+  InternalServerErrorException,
+  NotFoundException,
+  UnauthorizedException,
   UnprocessableEntityException,
 } from '@nestjs/common';
 import { CreatePaymentDto } from './dto/createPayment.dto';
@@ -10,6 +13,7 @@ import { ConfigService } from '@nestjs/config';
 import { createHash } from 'crypto';
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime/client';
 import { PaymentStatus } from '../generated/prisma/enums';
+import { Prisma } from '../generated/prisma/client';
 
 @Injectable()
 export class PaymentService {
@@ -109,5 +113,122 @@ export class PaymentService {
       checkoutUrl:
         this.config.getOrThrow('PAYMENT_PAGE_URL') + `/${payment.id}`,
     };
+  }
+
+  async approvePayment(userId: string, paymentId: string) {
+    const userAccount = await this.prisma.user.findUnique({
+      where: {
+        id: userId,
+      },
+      select: {
+        id: true,
+        accountId: true,
+      },
+    });
+    if (!userAccount)
+      throw new UnauthorizedException(
+        'User account not found, please login again.',
+      );
+
+    const paymentStore = await this.prisma.payment.findUnique({
+      where: {
+        id: paymentId,
+      },
+      select: {
+        id: true,
+        amountCents: true,
+        store: {
+          select: {
+            id: true,
+            accountId: true,
+          },
+        },
+      },
+    });
+    if (!paymentStore)
+      throw new NotFoundException('Payment not found, please try again.');
+    await this.prisma.$transaction(async (tx) => {
+      const PaymentRes = await tx.payment.updateMany({
+        where: {
+          id: paymentId,
+          expiresAt: {
+            gt: new Date(),
+          },
+          status: 'PENDING',
+        },
+        data: {
+          status: 'SUCCESS',
+          userId,
+        },
+      });
+      await this.checkFailedPayment(PaymentRes.count, paymentId, tx);
+      const userAccountRes = await tx.account.updateMany({
+        where: {
+          id: userAccount.accountId,
+          balanceCents: {
+            gte: paymentStore.amountCents,
+          },
+        },
+        data: {
+          balanceCents: {
+            decrement: paymentStore.amountCents,
+          },
+        },
+      });
+      if (userAccountRes.count === 0)
+        throw new UnprocessableEntityException('Insufficient Funds.');
+
+      await tx.transfer.create({
+        data: {
+          paymentId: paymentStore.id,
+          amountCents: paymentStore.amountCents,
+          fromAccountId: userAccount.accountId,
+          toAccountId: paymentStore.store.accountId,
+          type: 'PAYMENT',
+        },
+      });
+      await tx.webhookEvent.create({
+        data: {
+          paymentId: paymentId,
+        },
+      });
+      await tx.account.update({
+        where: {
+          id: paymentStore.store.accountId,
+        },
+        data: {
+          balanceCents: {
+            increment: paymentStore.amountCents,
+          },
+        },
+      });
+    });
+    return {
+      success: true,
+      message: 'Payment Success.',
+    };
+  }
+  private async checkFailedPayment(
+    count: number,
+    paymentId: string,
+    tx: Prisma.TransactionClient,
+  ) {
+    if (count > 0) return;
+    const payment = await tx.payment.findUnique({
+      where: {
+        id: paymentId,
+      },
+    });
+    if (!payment)
+      throw new NotFoundException('Requested payment has been deleted.');
+    if (payment.status === 'SUCCESS')
+      throw new ConflictException('Payment already paid.');
+    if (payment.status === 'EXPIRED' || payment.expiresAt <= new Date()) {
+      throw new ConflictException('Payment has been expired.');
+    }
+
+    throw new InternalServerErrorException(
+      'Something went wrong, please try again.',
+    );
   }
 }
