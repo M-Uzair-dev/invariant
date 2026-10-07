@@ -96,3 +96,28 @@ export async function assertLedgerInvariants(app: INestApplication) {
     WHERE a."balanceCents" <> COALESCE(i.s, 0) - COALESCE(o.s, 0)`;
   expect(drift).toEqual([]);
 }
+
+// Invariants 4 and 7, across every status:
+// - SUCCESS: exactly one PAYMENT transfer for its amount, exactly one outbox row
+// - EXPIRED: no transfer, exactly one outbox row
+// - PENDING: no transfer, no outbox row
+export async function assertPaymentInvariants(app: INestApplication) {
+  const prisma = app.get(PrismaService);
+  const bad = await prisma.$queryRaw<unknown[]>`
+    SELECT p.id, p.status,
+           (SELECT COUNT(*)::int FROM "Transfer" t WHERE t."paymentId" = p.id) AS transfers,
+           (SELECT COUNT(*)::int FROM "WebhookEvent" w WHERE w."paymentId" = p.id) AS events
+    FROM "Payment" p
+    WHERE (p.status = 'SUCCESS' AND (
+             (SELECT COUNT(*) FROM "Transfer" t
+               WHERE t."paymentId" = p.id AND t."amountCents" = p."amountCents"
+                 AND t.type = 'PAYMENT') <> 1
+          OR (SELECT COUNT(*) FROM "WebhookEvent" w WHERE w."paymentId" = p.id) <> 1))
+       OR (p.status = 'EXPIRED' AND (
+             EXISTS (SELECT 1 FROM "Transfer" t WHERE t."paymentId" = p.id)
+          OR (SELECT COUNT(*) FROM "WebhookEvent" w WHERE w."paymentId" = p.id) <> 1))
+       OR (p.status = 'PENDING' AND (
+             EXISTS (SELECT 1 FROM "Transfer" t WHERE t."paymentId" = p.id)
+          OR EXISTS (SELECT 1 FROM "WebhookEvent" w WHERE w."paymentId" = p.id)))`;
+  expect(bad).toEqual([]);
+}

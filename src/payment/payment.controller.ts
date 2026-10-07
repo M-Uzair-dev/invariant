@@ -2,6 +2,7 @@ import {
   BadRequestException,
   Body,
   Controller,
+  Get,
   Headers,
   Param,
   ParseUUIDPipe,
@@ -45,5 +46,14 @@ export class PaymentController {
     @Param('id', ParseUUIDPipe) paymentId: string,
   ) {
     return this.paymentService.approvePayment(userId, paymentId);
+  }
+
+  @UseGuards(ApiKeyGuard)
+  @Get(':id')
+  getPayment(
+    @CurrentStore('storeId') id: string,
+    @Param('id', ParseUUIDPipe) paymentId: string,
+  ) {
+    return this.paymentService.getPayment(paymentId, id);
   }
 }

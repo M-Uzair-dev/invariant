@@ -231,4 +231,26 @@ export class PaymentService {
       'Something went wrong, please try again.',
     );
   }
+  async getPayment(paymentId: string, storeId: string) {
+    const payment = await this.prisma.payment.findUnique({
+      where: {
+        id: paymentId,
+        storeId,
+      },
+      select: {
+        id: true,
+        amountCents: true,
+        expiresAt: true,
+        createdAt: true,
+        orderId: true,
+        status: true,
+        returnUrl: true,
+      },
+    });
+    if (!payment) throw new NotFoundException('Payment not found');
+    return {
+      ...payment,
+      amountCents: Number(payment.amountCents),
+    };
+  }
 }

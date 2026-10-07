@@ -10,6 +10,7 @@ import { StoreModule } from './store/store.module';
 import { ProfileModule } from './profile/profile.module';
 import { PaymentModule } from './payment/payment.module';
 import { AccountModule } from './account/account.module';
+import { ScheduleModule } from '@nestjs/schedule';
 
 @Module({
   imports: [
@@ -25,6 +26,7 @@ import { AccountModule } from './account/account.module';
         },
       }),
     }),
+    ScheduleModule.forRoot(),
     PrismaModule,
     RedisModule,
     AuthModule,
