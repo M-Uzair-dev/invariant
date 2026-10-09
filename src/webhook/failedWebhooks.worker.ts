@@ -72,7 +72,7 @@ export class FailedWebhookWorker implements OnModuleInit {
                 "That's why you dont vibe code critical endpoints.",
               );
               try {
-                await this.prisma.store.update({
+                await this.prisma.store.updateMany({
                   where: {
                     id: store.id,
                     webhookAlertOwedAt: {

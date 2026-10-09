@@ -259,7 +259,7 @@ describe('Webhook alert job (e2e)', () => {
 
     it('a crash between the send and the update re-sends next tick (at-least-once)', async () => {
       const store = await insertStore(owedNow());
-      vi.spyOn(prisma.store, 'update').mockRejectedValueOnce(
+      vi.spyOn(prisma.store, 'updateMany').mockRejectedValueOnce(
         new Error('db blip'),
       );
 
