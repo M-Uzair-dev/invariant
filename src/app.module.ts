@@ -11,6 +11,7 @@ import { ProfileModule } from './profile/profile.module';
 import { PaymentModule } from './payment/payment.module';
 import { AccountModule } from './account/account.module';
 import { ScheduleModule } from '@nestjs/schedule';
+import { WebhookModule } from './webhook/webhook.module';
 
 @Module({
   imports: [
@@ -34,6 +35,7 @@ import { ScheduleModule } from '@nestjs/schedule';
     ProfileModule,
     PaymentModule,
     AccountModule,
+    WebhookModule,
   ],
   controllers: [AppController],
   providers: [AppService],
