@@ -1,4 +1,13 @@
-import { Controller, Get, Query, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  HttpCode,
+  Param,
+  ParseUUIDPipe,
+  Post,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
 import { ApiKeyGuard } from '../utils/guards/apiKey.guard';
 import { CurrentStore } from '../utils/decorators/store.param';
 import { WebhookService } from './webhook.service';
@@ -19,5 +28,15 @@ export class WebhookController {
       query.take,
       query.cursor,
     );
+  }
+
+  @UseGuards(ApiKeyGuard)
+  @Post(':id/replay')
+  @HttpCode(202)
+  replayWebhook(
+    @CurrentStore('storeId') storeId: string,
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
+    return this.webhookService.replayWebhook(id, storeId);
   }
 }
