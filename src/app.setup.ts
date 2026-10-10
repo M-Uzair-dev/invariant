@@ -1,4 +1,5 @@
 import { INestApplication, ValidationPipe } from '@nestjs/common';
+import cookieParser from 'cookie-parser';
 
 export function configureApp(app: INestApplication) {
   app.useGlobalPipes(
@@ -8,4 +9,6 @@ export function configureApp(app: INestApplication) {
       transform: true,
     }),
   );
+
+  app.use(cookieParser());
 }

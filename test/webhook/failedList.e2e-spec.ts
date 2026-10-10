@@ -171,7 +171,7 @@ describe('List failed webhooks (e2e)', () => {
 
       const body = await page({ cursor: theirs[0].id });
 
-      const theirIds = new Set(theirs.map((e) => e.id));
+      const theirIds = new Set<string>(theirs.map((e) => e.id));
       expect(body.webhooks.some((w) => theirIds.has(w.id))).toBe(false);
     });
 

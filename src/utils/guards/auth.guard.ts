@@ -9,6 +9,9 @@ import { TokenService } from '../../tokens/token.service';
 import { Reflector } from '@nestjs/core';
 import { UserType } from '../../types/userRolesType';
 import { USER_TYPES_KEY } from '../decorators/auth.decorator';
+import { Request } from 'express';
+import { AuthUser } from '../decorators/user.param';
+import { SESSION_COOKIE } from '../session-cookie';
 
 @Injectable()
 export class AuthGuard implements CanActivate {
@@ -17,15 +20,16 @@ export class AuthGuard implements CanActivate {
     private readonly reflector: Reflector,
   ) {}
   async canActivate(context: ExecutionContext): Promise<boolean> {
-    const request = context.switchToHttp().getRequest();
-    let token = request.headers['authorization'];
-    if (!token) throw new UnauthorizedException('Invalid token, please login!');
-    if (token.startsWith('Bearer ')) {
-      token = token.slice(7);
-    } else {
-      throw new UnauthorizedException('Invalid token, please login!');
+    const request = context.switchToHttp().getRequest<
+      Request & {
+        user?: AuthUser;
+      }
+    >();
+    const cookie: unknown = request.cookies?.[SESSION_COOKIE];
+    if (typeof cookie !== 'string' || !cookie) {
+      throw new UnauthorizedException('Unauthorized, please login.');
     }
-    const res = await this.tokenService.verifyToken(token);
+    const res = await this.tokenService.verifyToken(cookie);
 
     if (res) {
       const userTypes = this.reflector.getAllAndOverride<UserType[]>(

@@ -7,6 +7,19 @@ import { ensureSystemAccount } from '../prisma/ensureSystemAccount';
 import { AppModule } from '../src/app.module';
 import { configureApp } from '../src/app.setup';
 import { PrismaService } from '../src/utils/prisma/prisma.service';
+import { SESSION_COOKIE } from '../src/utils/session-cookie';
+
+export { SESSION_COOKIE };
+
+export const sessionCookie = (token: string) => `${SESSION_COOKIE}=${token}`;
+
+// Pulls the raw session token out of a login/signup response's Set-Cookie.
+export function sessionTokenFrom(res: request.Response): string {
+  const raw = res.headers['set-cookie'] as unknown as string[] | undefined;
+  const cookie = raw?.find((c) => c.startsWith(`${SESSION_COOKIE}=`));
+  if (!cookie) throw new Error('response did not set a session cookie');
+  return decodeURIComponent(cookie.slice(SESSION_COOKIE.length + 1).split(';')[0]);
+}
 
 export async function createTestApp(): Promise<INestApplication> {
   const moduleRef = await Test.createTestingModule({
@@ -61,7 +74,7 @@ export async function createStore(
       data: { webhookUrl: opts.webhookUrl },
     });
   }
-  return { storeId: store.id, ...res.body };
+  return { storeId: store.id, token: sessionTokenFrom(res), ...res.body };
 }
 
 export async function createUser(
@@ -72,7 +85,7 @@ export async function createUser(
     .post('/auth/signup-user')
     .send({ name: 'Ali', email, password: 'secret123' })
     .expect(201);
-  return res.body;
+  return { token: sessionTokenFrom(res) };
 }
 
 // Invariants 1 and 2: balances sum to zero (SYSTEM included, so money is never

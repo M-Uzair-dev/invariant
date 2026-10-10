@@ -11,6 +11,7 @@ import {
   createUser,
   resetState,
   TestStore,
+  sessionCookie,
 } from '../helpers';
 
 describe('Payment expiry worker (e2e)', () => {
@@ -82,7 +83,7 @@ describe('Payment expiry worker (e2e)', () => {
     topupSeq += 1;
     await request(app.getHttpServer())
       .post('/account/topup')
-      .set('Authorization', `Bearer ${userToken}`)
+      .set('Cookie', sessionCookie(userToken))
       .set('Idempotency-Key', `topup-${topupSeq}`)
       .send({ amountCents })
       .expect(201);
@@ -196,7 +197,7 @@ describe('Payment expiry worker (e2e)', () => {
       const paymentId = await createPayment(2500);
       await request(app.getHttpServer())
         .post(`/payments/${paymentId}/approve`)
-        .set('Authorization', `Bearer ${user.token}`)
+        .set('Cookie', sessionCookie(user.token))
         .expect(201);
       await makeDue(paymentId);
 
@@ -279,7 +280,7 @@ describe('Payment expiry worker (e2e)', () => {
 
       await request(app.getHttpServer())
         .post(`/payments/${paymentId}/approve`)
-        .set('Authorization', `Bearer ${user.token}`)
+        .set('Cookie', sessionCookie(user.token))
         .expect(409);
 
       expect(await statusOf(paymentId)).toBe('EXPIRED');
@@ -416,7 +417,7 @@ describe('Payment expiry worker (e2e)', () => {
         await new Promise((r) => setTimeout(r, 100 + i * 5));
         return request(app.getHttpServer())
           .post(`/payments/${id}/approve`)
-          .set('Authorization', `Bearer ${user.token}`);
+          .set('Cookie', sessionCookie(user.token));
       });
       const ticks = (async () => {
         for (let i = 0; i < 6; i++) {

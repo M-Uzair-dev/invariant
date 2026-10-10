@@ -10,6 +10,7 @@ import {
   createUser,
   resetState,
   TestStore,
+  sessionCookie,
 } from '../helpers';
 
 describe('Approve payment (e2e)', () => {
@@ -58,7 +59,7 @@ describe('Approve payment (e2e)', () => {
     topupSeq += 1;
     await request(app.getHttpServer())
       .post('/account/topup')
-      .set('Authorization', `Bearer ${userToken}`)
+      .set('Cookie', sessionCookie(userToken))
       .set('Idempotency-Key', `topup-${topupSeq}`)
       .send({ amountCents })
       .expect(201);
@@ -68,7 +69,7 @@ describe('Approve payment (e2e)', () => {
     let req = request(app.getHttpServer()).post(
       `/payments/${paymentId}/approve`,
     );
-    if (auth !== null) req = req.set('Authorization', `Bearer ${auth}`);
+    if (auth !== null) req = req.set('Cookie', sessionCookie(auth));
     return req.send();
   };
 

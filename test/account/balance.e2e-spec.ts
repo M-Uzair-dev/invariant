@@ -8,6 +8,7 @@ import {
   createTestApp,
   createUser,
   resetState,
+  sessionCookie,
 } from '../helpers';
 
 describe('Balance (e2e)', () => {
@@ -29,14 +30,14 @@ describe('Balance (e2e)', () => {
 
   const balance = (auth: string | null) => {
     let req = request(app.getHttpServer()).get('/account/balance');
-    if (auth !== null) req = req.set('Authorization', `Bearer ${auth}`);
+    if (auth !== null) req = req.set('Cookie', sessionCookie(auth));
     return req;
   };
 
   const topup = (token: string, amountCents: number, key: string) =>
     request(app.getHttpServer())
       .post('/account/topup')
-      .set('Authorization', `Bearer ${token}`)
+      .set('Cookie', sessionCookie(token))
       .set('Idempotency-Key', key)
       .send({ amountCents })
       .expect(201);
@@ -177,7 +178,7 @@ describe('Balance (e2e)', () => {
       const { token } = await createUser(app);
       await request(app.getHttpServer())
         .post('/auth/logout')
-        .set('Authorization', `Bearer ${token}`)
+        .set('Cookie', sessionCookie(token))
         .expect((res) => expect(res.status).toBeLessThan(300));
 
       await balance(token).expect(401);

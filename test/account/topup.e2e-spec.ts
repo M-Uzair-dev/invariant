@@ -8,6 +8,7 @@ import {
   createTestApp,
   createUser,
   resetState,
+  sessionCookie,
 } from '../helpers';
 
 describe('Top-up (e2e)', () => {
@@ -35,7 +36,7 @@ describe('Top-up (e2e)', () => {
     auth: string | null = token,
   ) => {
     let req = request(app.getHttpServer()).post('/account/topup');
-    if (auth !== null) req = req.set('Authorization', `Bearer ${auth}`);
+    if (auth !== null) req = req.set('Cookie', sessionCookie(auth));
     if (key !== null) req = req.set('Idempotency-Key', key);
     return req.send({ amountCents });
   };
@@ -170,7 +171,7 @@ describe('Top-up (e2e)', () => {
     it('rejects a missing amount (400)', async () => {
       await request(app.getHttpServer())
         .post('/account/topup')
-        .set('Authorization', `Bearer ${token}`)
+        .set('Cookie', sessionCookie(token))
         .set('Idempotency-Key', 'key-1')
         .send({})
         .expect(400);
@@ -179,7 +180,7 @@ describe('Top-up (e2e)', () => {
     it('rejects unknown fields (400)', async () => {
       await request(app.getHttpServer())
         .post('/account/topup')
-        .set('Authorization', `Bearer ${token}`)
+        .set('Cookie', sessionCookie(token))
         .set('Idempotency-Key', 'key-1')
         .send({ amountCents: 1000, toAccountId: 'someone-else' })
         .expect(400);
