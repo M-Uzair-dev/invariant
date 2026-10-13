@@ -10,3 +10,8 @@ export const SESSION_COOKIE_OPTIONS: CookieOptions = {
   sameSite: 'lax',
   path: '/',
 };
+
+// CSRF second layer: state-changing session requests must carry this header.
+// HTML forms can't set it, and a cross-origin fetch with it needs a preflight we refuse.
+export const CSRF_HEADER = 'x-csrf';
+export const CSRF_SAFE_METHODS = ['GET', 'HEAD', 'OPTIONS'];

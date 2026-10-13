@@ -11,7 +11,9 @@ import {
   createUser,
   resetState,
   TestStore,
-  sessionCookie,
+  session,
+  TEST_PIN,
+  skipPinCheck,
 } from '../helpers';
 
 describe('Payment expiry worker (e2e)', () => {
@@ -83,9 +85,9 @@ describe('Payment expiry worker (e2e)', () => {
     topupSeq += 1;
     await request(app.getHttpServer())
       .post('/account/topup')
-      .set('Cookie', sessionCookie(userToken))
+      .set(session(userToken))
       .set('Idempotency-Key', `topup-${topupSeq}`)
-      .send({ amountCents })
+      .send({ amountCents, pin: TEST_PIN })
       .expect(201);
   };
 
@@ -197,7 +199,8 @@ describe('Payment expiry worker (e2e)', () => {
       const paymentId = await createPayment(2500);
       await request(app.getHttpServer())
         .post(`/payments/${paymentId}/approve`)
-        .set('Cookie', sessionCookie(user.token))
+        .set(session(user.token))
+        .send({ pin: TEST_PIN })
         .expect(201);
       await makeDue(paymentId);
 
@@ -280,7 +283,8 @@ describe('Payment expiry worker (e2e)', () => {
 
       await request(app.getHttpServer())
         .post(`/payments/${paymentId}/approve`)
-        .set('Cookie', sessionCookie(user.token))
+        .set(session(user.token))
+        .send({ pin: TEST_PIN })
         .expect(409);
 
       expect(await statusOf(paymentId)).toBe('EXPIRED');
@@ -406,6 +410,8 @@ describe('Payment expiry worker (e2e)', () => {
       await fund(user.token, 100_000);
       const ids: string[] = [];
       for (let i = 0; i < 20; i++) ids.push(await createPayment(100));
+      // also keeps bcrypt's latency from pushing every approval past the deadline
+      skipPinCheck(app);
 
       const deadline = new Date(Date.now() + 150);
       await prisma.payment.updateMany({
@@ -417,7 +423,8 @@ describe('Payment expiry worker (e2e)', () => {
         await new Promise((r) => setTimeout(r, 100 + i * 5));
         return request(app.getHttpServer())
           .post(`/payments/${id}/approve`)
-          .set('Cookie', sessionCookie(user.token));
+          .set(session(user.token))
+          .send({ pin: TEST_PIN });
       });
       const ticks = (async () => {
         for (let i = 0; i < 6; i++) {

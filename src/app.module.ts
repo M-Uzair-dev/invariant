@@ -12,6 +12,7 @@ import { PaymentModule } from './payment/payment.module';
 import { AccountModule } from './account/account.module';
 import { ScheduleModule } from '@nestjs/schedule';
 import { WebhookModule } from './webhook/webhook.module';
+import { PinModule } from './pin/pin.module';
 
 @Module({
   imports: [
@@ -36,6 +37,7 @@ import { WebhookModule } from './webhook/webhook.module';
     PaymentModule,
     AccountModule,
     WebhookModule,
+    PinModule,
   ],
   controllers: [AppController],
   providers: [AppService],

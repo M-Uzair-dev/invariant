@@ -10,7 +10,9 @@ import {
   createUser,
   resetState,
   TestStore,
-  sessionCookie,
+  session,
+  TEST_PIN,
+  skipPinCheck,
 } from '../helpers';
 
 describe('Approve payment (e2e)', () => {
@@ -59,9 +61,9 @@ describe('Approve payment (e2e)', () => {
     topupSeq += 1;
     await request(app.getHttpServer())
       .post('/account/topup')
-      .set('Cookie', sessionCookie(userToken))
+      .set(session(userToken))
       .set('Idempotency-Key', `topup-${topupSeq}`)
-      .send({ amountCents })
+      .send({ amountCents, pin: TEST_PIN })
       .expect(201);
   };
 
@@ -69,8 +71,8 @@ describe('Approve payment (e2e)', () => {
     let req = request(app.getHttpServer()).post(
       `/payments/${paymentId}/approve`,
     );
-    if (auth !== null) req = req.set('Cookie', sessionCookie(auth));
-    return req.send();
+    if (auth !== null) req = req.set(session(auth));
+    return req.send({ pin: TEST_PIN });
   };
 
   const accountOf = async (email: string) =>
@@ -347,6 +349,7 @@ describe('Approve payment (e2e)', () => {
   describe('concurrency', () => {
     it('invariant 3: 10 parallel approvals of one payment charge exactly once', async () => {
       await fund(100000);
+      skipPinCheck(app);
       const paymentId = await createPayment(2500);
 
       const results = await Promise.all(

@@ -2,23 +2,44 @@ import { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import Redis from 'ioredis';
 import request from 'supertest';
-import { expect } from 'vitest';
+import { expect, onTestFinished, vi } from 'vitest';
 import { ensureSystemAccount } from '../prisma/ensureSystemAccount';
 import { AppModule } from '../src/app.module';
 import { configureApp } from '../src/app.setup';
 import { PrismaService } from '../src/utils/prisma/prisma.service';
-import { SESSION_COOKIE } from '../src/utils/session-cookie';
+import { PinService } from '../src/pin/pin.service';
+import { CSRF_HEADER, SESSION_COOKIE } from '../src/utils/session-cookie';
 
-export { SESSION_COOKIE };
+export { CSRF_HEADER, SESSION_COOKIE };
+
+export const TEST_PIN = '123456';
 
 export const sessionCookie = (token: string) => `${SESSION_COOKIE}=${token}`;
+
+// Cookie + CSRF header, as the browser frontend sends them. Pass to supertest's .set().
+export const session = (token: string) => ({
+  Cookie: sessionCookie(token),
+  [CSRF_HEADER]: '1',
+});
 
 // Pulls the raw session token out of a login/signup response's Set-Cookie.
 export function sessionTokenFrom(res: request.Response): string {
   const raw = res.headers['set-cookie'] as unknown as string[] | undefined;
   const cookie = raw?.find((c) => c.startsWith(`${SESSION_COOKIE}=`));
   if (!cookie) throw new Error('response did not set a session cookie');
-  return decodeURIComponent(cookie.slice(SESSION_COOKIE.length + 1).split(';')[0]);
+  return decodeURIComponent(
+    cookie.slice(SESSION_COOKIE.length + 1).split(';')[0],
+  );
+}
+
+// For ledger race tests that fire many PIN-checked requests at once. Each in-flight
+// PIN check reserves an attempt, so more than PIN_MAX_ATTEMPTS parallel requests
+// from one user would get 429s. Those tests are about the ledger, not the PIN.
+export function skipPinCheck(app: INestApplication) {
+  const spy = vi
+    .spyOn(app.get(PinService), 'verifyPin')
+    .mockResolvedValue(undefined);
+  onTestFinished(() => spy.mockRestore());
 }
 
 export async function createTestApp(): Promise<INestApplication> {
@@ -83,7 +104,7 @@ export async function createUser(
 ): Promise<{ token: string }> {
   const res = await request(app.getHttpServer())
     .post('/auth/signup-user')
-    .send({ name: 'Ali', email, password: 'secret123' })
+    .send({ name: 'Ali', email, password: 'secret123', pin: TEST_PIN })
     .expect(201);
   return { token: sessionTokenFrom(res) };
 }

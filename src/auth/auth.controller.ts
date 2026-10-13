@@ -37,6 +37,7 @@ export class AuthController {
       data.name,
       data.email,
       data.password,
+      data.pin,
     );
     this.setCookie(res, token);
     return { success: true };

@@ -8,9 +8,12 @@ import {
   createTestApp,
   createUser,
   resetState,
+  CSRF_HEADER,
   SESSION_COOKIE,
   sessionCookie,
   sessionTokenFrom,
+  session,
+  TEST_PIN,
 } from '../helpers';
 
 const setCookies = (res: request.Response): string[] =>
@@ -43,7 +46,12 @@ describe('Auth (e2e)', () => {
     it('creates a user and sets a session cookie, with no token in the body', async () => {
       const res = await http()
         .post('/auth/signup-user')
-        .send({ name: 'Ali', email: 'ali@test.com', password: 'secret123' })
+        .send({
+          name: 'Ali',
+          email: 'ali@test.com',
+          password: 'secret123',
+          pin: TEST_PIN,
+        })
         .expect(201);
 
       expect(res.body).toEqual({ success: true });
@@ -55,7 +63,12 @@ describe('Auth (e2e)', () => {
     it('sets HttpOnly, Secure, SameSite=Lax, Path=/ and no Domain', async () => {
       const res = await http()
         .post('/auth/signup-user')
-        .send({ name: 'Ali', email: 'ali@test.com', password: 'secret123' })
+        .send({
+          name: 'Ali',
+          email: 'ali@test.com',
+          password: 'secret123',
+          pin: TEST_PIN,
+        })
         .expect(201);
 
       const attrs = sessionSetCookie(res)
@@ -72,21 +85,33 @@ describe('Auth (e2e)', () => {
     it('caps the cookie lifetime at SESSION_MAX_LIFETIME_SECONDS', async () => {
       const res = await http()
         .post('/auth/signup-user')
-        .send({ name: 'Ali', email: 'ali@test.com', password: 'secret123' })
+        .send({
+          name: 'Ali',
+          email: 'ali@test.com',
+          password: 'secret123',
+          pin: TEST_PIN,
+        })
         .expect(201);
 
       const maxAge = sessionSetCookie(res)
         .split(';')
         .map((a) => a.trim())
         .find((a) => a.toLowerCase().startsWith('max-age='));
-      expect(maxAge).toBe(`Max-Age=${process.env.SESSION_MAX_LIFETIME_SECONDS}`);
+      expect(maxAge).toBe(
+        `Max-Age=${process.env.SESSION_MAX_LIFETIME_SECONDS}`,
+      );
     });
 
     it('sets no cookie when signup fails', async () => {
       await createUser(app);
       const res = await http()
         .post('/auth/signup-user')
-        .send({ name: 'Ali', email: 'ali@test.com', password: 'secret123' })
+        .send({
+          name: 'Ali',
+          email: 'ali@test.com',
+          password: 'secret123',
+          pin: TEST_PIN,
+        })
         .expect(409);
 
       expect(setCookies(res)).toEqual([]);
@@ -97,6 +122,7 @@ describe('Auth (e2e)', () => {
         name: 'Ali',
         email: 'ali@test.com',
         password: 'secret123',
+        pin: TEST_PIN,
       };
       await http().post('/auth/signup-user').send(body).expect(201);
 
@@ -106,20 +132,53 @@ describe('Auth (e2e)', () => {
     it('treats emails case-insensitively', async () => {
       await http()
         .post('/auth/signup-user')
-        .send({ name: 'Ali', email: 'Ali@Test.com', password: 'secret123' })
+        .send({
+          name: 'Ali',
+          email: 'Ali@Test.com',
+          password: 'secret123',
+          pin: TEST_PIN,
+        })
         .expect(201);
 
       await http()
         .post('/auth/signup-user')
-        .send({ name: 'Ali', email: 'ali@test.com', password: 'secret123' })
+        .send({
+          name: 'Ali',
+          email: 'ali@test.com',
+          password: 'secret123',
+          pin: TEST_PIN,
+        })
         .expect(409);
     });
 
     it.each([
-      ['invalid email', { name: 'Ali', email: 'not-an-email', password: 'secret123' }],
-      ['short password', { name: 'Ali', email: 'ali@test.com', password: '12345' }],
-      ['missing name', { email: 'ali@test.com', password: 'secret123' }],
-      ['unknown extra field', { name: 'Ali', email: 'ali@test.com', password: 'secret123', role: 'admin' }],
+      [
+        'invalid email',
+        {
+          name: 'Ali',
+          email: 'not-an-email',
+          password: 'secret123',
+          pin: TEST_PIN,
+        },
+      ],
+      [
+        'short password',
+        { name: 'Ali', email: 'ali@test.com', password: '12345' },
+      ],
+      [
+        'missing name',
+        { email: 'ali@test.com', password: 'secret123', pin: TEST_PIN },
+      ],
+      [
+        'unknown extra field',
+        {
+          name: 'Ali',
+          email: 'ali@test.com',
+          password: 'secret123',
+          pin: TEST_PIN,
+          role: 'admin',
+        },
+      ],
     ])('rejects %s (400)', async (_, body) => {
       await http().post('/auth/signup-user').send(body).expect(400);
     });
@@ -139,7 +198,7 @@ describe('Auth (e2e)', () => {
       expect(res.body).toEqual({ success: true });
       await http()
         .get('/account/balance')
-        .set('Cookie', sessionCookie(sessionTokenFrom(res)))
+        .set(session(sessionTokenFrom(res)))
         .expect(200);
     });
 
@@ -206,7 +265,7 @@ describe('Auth (e2e)', () => {
       });
       await http()
         .get('/account/balance')
-        .set('Cookie', sessionCookie(sessionTokenFrom(res)))
+        .set(session(sessionTokenFrom(res)))
         .expect(200);
     });
 
@@ -245,7 +304,7 @@ describe('Auth (e2e)', () => {
       expect(res.body).toEqual({ success: true });
       await http()
         .get('/account/balance')
-        .set('Cookie', sessionCookie(sessionTokenFrom(res)))
+        .set(session(sessionTokenFrom(res)))
         .expect(200);
     });
 
@@ -268,8 +327,14 @@ describe('Auth (e2e)', () => {
       const { token } = await createUser(app);
       const cookie = sessionCookie(token);
 
-      await http().post('/auth/logout').set('Cookie', cookie).expect(204);
-      await http().post('/auth/logout').set('Cookie', cookie).expect(401);
+      await http()
+        .post('/auth/logout')
+        .set({ Cookie: cookie, [CSRF_HEADER]: '1' })
+        .expect(204);
+      await http()
+        .post('/auth/logout')
+        .set({ Cookie: cookie, [CSRF_HEADER]: '1' })
+        .expect(401);
       await http().get('/account/balance').set('Cookie', cookie).expect(401);
     });
 
@@ -277,7 +342,7 @@ describe('Auth (e2e)', () => {
       const { token } = await createUser(app);
       const res = await http()
         .post('/auth/logout')
-        .set('Cookie', sessionCookie(token))
+        .set(session(token))
         .expect(204);
 
       const [nameValue, ...rest] = sessionSetCookie(res)
@@ -302,22 +367,16 @@ describe('Auth (e2e)', () => {
         .post('/auth/login-user')
         .send({ email: 'ali@test.com', password: 'secret123' });
 
+      await http().post('/auth/logout').set(session(first.token)).expect(204);
       await http()
         .post('/auth/logout')
-        .set('Cookie', sessionCookie(first.token))
-        .expect(204);
-      await http()
-        .post('/auth/logout')
-        .set('Cookie', sessionCookie(sessionTokenFrom(second)))
+        .set(session(sessionTokenFrom(second)))
         .expect(204);
     });
 
     it('works for store sessions too', async () => {
       const store = await createStore(app);
-      await http()
-        .post('/auth/logout')
-        .set('Cookie', sessionCookie(store.token))
-        .expect(204);
+      await http().post('/auth/logout').set(session(store.token)).expect(204);
     });
 
     it.each([
@@ -325,7 +384,10 @@ describe('Auth (e2e)', () => {
       ['garbage token', sessionCookie('garbage')],
       ['empty value', `${SESSION_COOKIE}=`],
       ['some other cookie only', 'theme=dark'],
-      ['a JSON cookie (j: prefix)', `${SESSION_COOKIE}=j:${encodeURIComponent('{"a":1}')}`],
+      [
+        'a JSON cookie (j: prefix)',
+        `${SESSION_COOKIE}=j:${encodeURIComponent('{"a":1}')}`,
+      ],
     ])('rejects %s (401)', async (_, cookie) => {
       const req = http().post('/auth/logout');
       if (cookie !== undefined) req.set('Cookie', cookie);
@@ -336,7 +398,7 @@ describe('Auth (e2e)', () => {
       const store = await createStore(app);
       await http()
         .post('/auth/logout')
-        .set('Cookie', sessionCookie(store.secretKey))
+        .set(session(store.secretKey))
         .expect(401);
     });
   });
@@ -370,7 +432,7 @@ describe('Auth (e2e)', () => {
       const store = await createStore(app);
       await http()
         .post('/payments')
-        .set('Cookie', sessionCookie(store.token))
+        .set(session(store.token))
         .set('Idempotency-Key', 'k1')
         .send({
           amountCents: 1000,
@@ -387,7 +449,7 @@ describe('Auth (e2e)', () => {
       const user = await createUser(app);
       await http()
         .put('/store/webhook')
-        .set('Cookie', sessionCookie(user.token))
+        .set(session(user.token))
         .send({ url: 'https://shop.example.com/hooks' })
         .expect(403);
     });

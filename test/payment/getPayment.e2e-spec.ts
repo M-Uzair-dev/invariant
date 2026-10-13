@@ -9,7 +9,8 @@ import {
   createUser,
   resetState,
   TestStore,
-  sessionCookie,
+  session,
+  TEST_PIN,
 } from '../helpers';
 
 describe('Get payment (e2e)', () => {
@@ -96,13 +97,14 @@ describe('Get payment (e2e)', () => {
       const user = await createUser(app);
       await request(app.getHttpServer())
         .post('/account/topup')
-        .set('Cookie', sessionCookie(user.token))
+        .set(session(user.token))
         .set('Idempotency-Key', 'topup-1')
-        .send({ amountCents: 1000 })
+        .send({ amountCents: 1000, pin: TEST_PIN })
         .expect(201);
       await request(app.getHttpServer())
         .post(`/payments/${paymentId}/approve`)
-        .set('Cookie', sessionCookie(user.token))
+        .set(session(user.token))
+        .send({ pin: TEST_PIN })
         .expect(201);
 
       const res = await getPayment(paymentId).expect(200);
@@ -124,9 +126,9 @@ describe('Get payment (e2e)', () => {
       const user = await createUser(app);
       await request(app.getHttpServer())
         .post('/account/topup')
-        .set('Cookie', sessionCookie(user.token))
+        .set(session(user.token))
         .set('Idempotency-Key', 'topup-1')
-        .send({ amountCents: 1000 })
+        .send({ amountCents: 1000, pin: TEST_PIN })
         .expect(201);
 
       expect((await getPayment(paymentId).expect(200)).body.status).toBe(
@@ -135,7 +137,8 @@ describe('Get payment (e2e)', () => {
 
       await request(app.getHttpServer())
         .post(`/payments/${paymentId}/approve`)
-        .set('Cookie', sessionCookie(user.token))
+        .set(session(user.token))
+        .send({ pin: TEST_PIN })
         .expect(201);
 
       expect((await getPayment(paymentId).expect(200)).body.status).toBe(

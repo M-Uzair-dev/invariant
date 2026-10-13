@@ -8,7 +8,9 @@ import {
   createTestApp,
   createUser,
   resetState,
-  sessionCookie,
+  session,
+  TEST_PIN,
+  skipPinCheck,
 } from '../helpers';
 
 describe('Top-up (e2e)', () => {
@@ -36,9 +38,9 @@ describe('Top-up (e2e)', () => {
     auth: string | null = token,
   ) => {
     let req = request(app.getHttpServer()).post('/account/topup');
-    if (auth !== null) req = req.set('Cookie', sessionCookie(auth));
+    if (auth !== null) req = req.set(session(auth));
     if (key !== null) req = req.set('Idempotency-Key', key);
-    return req.send({ amountCents });
+    return req.send({ amountCents, pin: TEST_PIN });
   };
 
   const balances = async () => {
@@ -113,6 +115,7 @@ describe('Top-up (e2e)', () => {
     });
 
     it('concurrent requests with the same key credit exactly once', async () => {
+      skipPinCheck(app);
       const results = await Promise.all(
         Array.from({ length: 10 }, () => topup(1000)),
       );
@@ -125,6 +128,7 @@ describe('Top-up (e2e)', () => {
     });
 
     it('concurrent requests with different keys all land', async () => {
+      skipPinCheck(app);
       const results = await Promise.all(
         Array.from({ length: 10 }, (_, i) => topup(1000, `key-${i}`)),
       );
@@ -171,18 +175,18 @@ describe('Top-up (e2e)', () => {
     it('rejects a missing amount (400)', async () => {
       await request(app.getHttpServer())
         .post('/account/topup')
-        .set('Cookie', sessionCookie(token))
+        .set(session(token))
         .set('Idempotency-Key', 'key-1')
-        .send({})
+        .send({ pin: TEST_PIN })
         .expect(400);
     });
 
     it('rejects unknown fields (400)', async () => {
       await request(app.getHttpServer())
         .post('/account/topup')
-        .set('Cookie', sessionCookie(token))
+        .set(session(token))
         .set('Idempotency-Key', 'key-1')
-        .send({ amountCents: 1000, toAccountId: 'someone-else' })
+        .send({ amountCents: 1000, pin: TEST_PIN, toAccountId: 'someone-else' })
         .expect(400);
     });
   });

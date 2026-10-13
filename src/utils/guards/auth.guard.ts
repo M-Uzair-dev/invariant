@@ -11,7 +11,11 @@ import { UserType } from '../../types/userRolesType';
 import { USER_TYPES_KEY } from '../decorators/auth.decorator';
 import { Request } from 'express';
 import { AuthUser } from '../decorators/user.param';
-import { SESSION_COOKIE } from '../session-cookie';
+import {
+  CSRF_HEADER,
+  CSRF_SAFE_METHODS,
+  SESSION_COOKIE,
+} from '../session-cookie';
 
 @Injectable()
 export class AuthGuard implements CanActivate {
@@ -36,6 +40,12 @@ export class AuthGuard implements CanActivate {
         USER_TYPES_KEY,
         [context.getHandler(), context.getClass()],
       );
+      if (
+        !CSRF_SAFE_METHODS.includes(request.method) &&
+        !request.headers[CSRF_HEADER]
+      ) {
+        throw new ForbiddenException(`Missing ${CSRF_HEADER} header.`);
+      }
       if (userTypes?.includes(res.userType)) {
         request.user = {
           userId: res.userId,

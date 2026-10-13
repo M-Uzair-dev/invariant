@@ -16,10 +16,15 @@ import { PaymentService } from './payment.service';
 import { CreatePaymentDto } from './dto/createPayment.dto';
 import { Auth } from '../utils/decorators/auth.decorator';
 import { CurrentUser } from '../utils/decorators/user.param';
+import { PinService } from '../pin/pin.service';
+import { PinDto } from '../pin/dto/pin.dto';
 
 @Controller('payments')
 export class PaymentController {
-  constructor(private readonly paymentService: PaymentService) {}
+  constructor(
+    private readonly paymentService: PaymentService,
+    private readonly pinService: PinService,
+  ) {}
   @UseGuards(ApiKeyGuard)
   @Post()
   createPayment(
@@ -41,10 +46,12 @@ export class PaymentController {
 
   @Auth('USER')
   @Post(':id/approve')
-  approvePayment(
+  async approvePayment(
     @CurrentUser('userId') userId: string,
     @Param('id', ParseUUIDPipe) paymentId: string,
+    @Body() dto: PinDto,
   ) {
+    await this.pinService.verifyPin(userId, dto.pin);
     return this.paymentService.approvePayment(userId, paymentId);
   }
 

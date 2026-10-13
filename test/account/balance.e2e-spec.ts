@@ -8,7 +8,8 @@ import {
   createTestApp,
   createUser,
   resetState,
-  sessionCookie,
+  session,
+  TEST_PIN,
 } from '../helpers';
 
 describe('Balance (e2e)', () => {
@@ -30,16 +31,16 @@ describe('Balance (e2e)', () => {
 
   const balance = (auth: string | null) => {
     let req = request(app.getHttpServer()).get('/account/balance');
-    if (auth !== null) req = req.set('Cookie', sessionCookie(auth));
+    if (auth !== null) req = req.set(session(auth));
     return req;
   };
 
   const topup = (token: string, amountCents: number, key: string) =>
     request(app.getHttpServer())
       .post('/account/topup')
-      .set('Cookie', sessionCookie(token))
+      .set(session(token))
       .set('Idempotency-Key', key)
-      .send({ amountCents })
+      .send({ amountCents, pin: TEST_PIN })
       .expect(201);
 
   // Stores can't top up and approve doesn't exist yet, so fund the store's
@@ -107,7 +108,7 @@ describe('Balance (e2e)', () => {
       await assertLedgerInvariants(app);
     });
 
-    it("does not change on an idempotent replay", async () => {
+    it('does not change on an idempotent replay', async () => {
       const { token } = await createUser(app);
       await topup(token, 1000, 'key-1');
       await topup(token, 1000, 'key-1');
@@ -178,7 +179,7 @@ describe('Balance (e2e)', () => {
       const { token } = await createUser(app);
       await request(app.getHttpServer())
         .post('/auth/logout')
-        .set('Cookie', sessionCookie(token))
+        .set(session(token))
         .expect((res) => expect(res.status).toBeLessThan(300));
 
       await balance(token).expect(401);

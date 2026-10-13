@@ -19,15 +19,17 @@ export class AuthService {
     private readonly tokenService: TokenService,
   ) {}
 
-  async userSignup(name: string, email: string, password: string) {
+  async userSignup(name: string, email: string, password: string, pin: string) {
     try {
       const passwordHash = await bcrypt.hash(password, 12);
+      const pinHash = await bcrypt.hash(pin, 12);
 
       const newUser = await this.prisma.user.create({
         data: {
           name,
           email: email.toLowerCase(),
           passwordHash,
+          pinHash,
           account: {
             create: {
               type: 'USER',

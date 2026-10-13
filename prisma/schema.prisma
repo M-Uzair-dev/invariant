@@ -53,12 +53,13 @@ model User {
   id String @id @default(uuid())
   name String
   email String @unique
-  passwordHash String 
+  passwordHash String
+  pinHash String // bcrypt of the 6-digit approval PIN; '' for users created before PINs (reset with password)
 
   accountId String @unique
   account Account @relation(references: [id], fields: [accountId], onDelete: Restrict)
   payments Payment[]
-  
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt()
 }

@@ -24,7 +24,8 @@ import {
   createUser,
   resetState,
   TestStore,
-  sessionCookie,
+  session,
+  TEST_PIN,
 } from '../helpers';
 
 // ---------- a local store endpoint ----------
@@ -188,14 +189,14 @@ describe('Webhook delivery worker (e2e)', () => {
     const { token } = await createUser(app);
     await http
       .post('/account/topup')
-      .set('Cookie', sessionCookie(token))
+      .set(session(token))
       .set('Idempotency-Key', 'topup-ok')
-      .send({ amountCents: 10_000 })
+      .send({ amountCents: 10_000, pin: TEST_PIN })
       .expect(201);
     await http
       .post(`/payments/${(created.body as { id: string }).id}/approve`)
-      .set('Cookie', sessionCookie(token))
-      .send()
+      .set(session(token))
+      .send({ pin: TEST_PIN })
       .expect(201);
     return (created.body as { id: string }).id;
   };
