@@ -5,6 +5,8 @@ import {
   HttpStatus,
   Inject,
   Injectable,
+  Logger,
+  ServiceUnavailableException,
   UnauthorizedException,
 } from '@nestjs/common';
 import bcrypt from 'bcrypt';
@@ -17,6 +19,8 @@ export const PIN_LOCK_SECONDS = 15 * 60;
 
 @Injectable()
 export class PinService {
+  private readonly logger = new Logger(PinService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     @Inject('REDIS_CLIENT') private readonly redis: Redis,
@@ -35,11 +39,21 @@ export class PinService {
     const key = this.attemptsKey(userId);
     // Reserve the attempt before comparing: INCR is atomic, so parallel guesses
     // can't all pass a "count < max" check. The window starts at the first attempt.
-    const [[, attempts]] = (await this.redis
+    const [[incrError, attempts]] = (await this.redis
       .multi()
       .incr(key)
       .expire(key, PIN_LOCK_SECONDS, 'NX')
-      .exec()) as [[Error | null, number], [Error | null, number]];
+      .exec()) as [[Error | null, unknown], [Error | null, unknown]];
+    // exec() resolves (not rejects) when a queued command fails at runtime,
+    // and null > 5 is false: without this, a broken counter means unlimited guesses.
+    if (incrError || typeof attempts !== 'number') {
+      this.logger.error(
+        `PIN attempt counter unavailable for user ${userId}: ${incrError?.message ?? `got ${String(attempts)}`}`,
+      );
+      throw new ServiceUnavailableException(
+        'PIN check is temporarily unavailable. Try again shortly.',
+      );
+    }
     if (attempts > PIN_MAX_ATTEMPTS) {
       throw new HttpException(
         'Too many incorrect PIN attempts. Try again later, or reset your PIN with your password.',

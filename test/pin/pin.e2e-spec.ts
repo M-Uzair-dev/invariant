@@ -249,6 +249,35 @@ describe('Approval PIN (e2e)', () => {
     });
   });
 
+  describe('fails closed when the attempt counter is broken', () => {
+    const key = () => `pin-attempts:${userId}`;
+
+    it('a non-integer counter refuses even the right PIN (503) and credits nothing', async () => {
+      await redis.set(key(), 'abc');
+      await topup(TEST_PIN).expect(503);
+      expect(await balance()).toEqual({ balanceCents: 0 });
+    });
+
+    it('a counter of the wrong type refuses approve (503): payment stays PENDING, no money moves', async () => {
+      await topup(TEST_PIN, 1000).expect(201);
+      const paymentId = await createPayment(500);
+      await redis.hset(key(), 'x', '1');
+      await approve(paymentId, TEST_PIN).expect(503);
+      expect(
+        (await prisma.payment.findUniqueOrThrow({ where: { id: paymentId } }))
+          .status,
+      ).toBe('PENDING');
+      expect(await balance()).toEqual({ balanceCents: 1000 });
+      await assertLedgerInvariants(app);
+    });
+
+    it('wrong PINs against a broken counter are never compared (503, not 403)', async () => {
+      await redis.set(key(), 'abc');
+      for (let i = 0; i < PIN_MAX_ATTEMPTS + 3; i++)
+        await topup(WRONG_PIN).expect(503);
+    });
+  });
+
   describe('PATCH /profile/pin (change with the current PIN)', () => {
     const change = (currentPin: string, newPin: string) =>
       http()

@@ -13,6 +13,7 @@ import { AccountModule } from './account/account.module';
 import { ScheduleModule } from '@nestjs/schedule';
 import { WebhookModule } from './webhook/webhook.module';
 import { PinModule } from './pin/pin.module';
+import { ReconciliationModule } from './reconciliation/reconciliation.module';
 
 @Module({
   imports: [
@@ -38,6 +39,7 @@ import { PinModule } from './pin/pin.module';
     AccountModule,
     WebhookModule,
     PinModule,
+    ReconciliationModule,
   ],
   controllers: [AppController],
   providers: [AppService],
