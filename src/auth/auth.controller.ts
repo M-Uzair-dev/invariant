@@ -1,4 +1,11 @@
-import { Body, Controller, HttpCode, Post, Res } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  HttpCode,
+  Post,
+  Res,
+  UseGuards,
+} from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { UserSignupDto } from './dto/userSignup.dto';
 import { UserLoginDto } from './dto/userLogin.dto';
@@ -12,6 +19,7 @@ import {
   SESSION_COOKIE,
   SESSION_COOKIE_OPTIONS,
 } from '../utils/session-cookie';
+import { AuthRateLimitGuard } from '../utils/guards/rateLimit.guard';
 
 @Controller('auth')
 export class AuthController {
@@ -29,6 +37,7 @@ export class AuthController {
   }
 
   @Post('signup-user')
+  @UseGuards(AuthRateLimitGuard)
   async userSignup(
     @Body() data: UserSignupDto,
     @Res({ passthrough: true }) res: Response,
@@ -44,6 +53,7 @@ export class AuthController {
   }
 
   @Post('login-user')
+  @UseGuards(AuthRateLimitGuard)
   async userLogin(
     @Body() data: UserLoginDto,
     @Res({ passthrough: true }) res: Response,
@@ -69,6 +79,7 @@ export class AuthController {
   }
 
   @Post('login-store')
+  @UseGuards(AuthRateLimitGuard)
   async storeLogin(
     @Body() data: StoreLoginDto,
     @Res({ passthrough: true }) res: Response,
@@ -82,6 +93,7 @@ export class AuthController {
   }
 
   @Post('signup-store')
+  @UseGuards(AuthRateLimitGuard)
   async storeSignup(
     @Body() data: StoreSignupDto,
     @Res({ passthrough: true }) res: Response,

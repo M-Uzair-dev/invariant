@@ -14,6 +14,9 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { WebhookModule } from './webhook/webhook.module';
 import { PinModule } from './pin/pin.module';
 import { ReconciliationModule } from './reconciliation/reconciliation.module';
+import { APP_GUARD } from '@nestjs/core';
+import { RateLimitModule } from './utils/rate-limit/rate-limit.service';
+import { GlobalRateLimitGuard } from './utils/guards/rateLimit.guard';
 
 @Module({
   imports: [
@@ -32,6 +35,7 @@ import { ReconciliationModule } from './reconciliation/reconciliation.module';
     ScheduleModule.forRoot(),
     PrismaModule,
     RedisModule,
+    RateLimitModule,
     AuthModule,
     StoreModule,
     ProfileModule,
@@ -42,6 +46,9 @@ import { ReconciliationModule } from './reconciliation/reconciliation.module';
     ReconciliationModule,
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [
+    AppService,
+    { provide: APP_GUARD, useClass: GlobalRateLimitGuard },
+  ],
 })
 export class AppModule {}

@@ -1,8 +1,9 @@
-import { Body, Controller, HttpCode, Patch } from '@nestjs/common';
+import { Body, Controller, HttpCode, Patch, UseGuards } from '@nestjs/common';
 import { Auth } from '../utils/decorators/auth.decorator';
 import { CurrentUser } from '../utils/decorators/user.param';
 import { PinService } from './pin.service';
 import { ChangePinDto, ResetPinDto } from './dto/pin.dto';
+import { AuthRateLimitGuard } from '../utils/guards/rateLimit.guard';
 
 @Auth('USER')
 @Controller('profile/pin')
@@ -19,6 +20,7 @@ export class PinController {
   }
 
   @Patch('forgot')
+  @UseGuards(AuthRateLimitGuard)
   @HttpCode(204)
   async resetPin(
     @CurrentUser('userId') userId: string,
