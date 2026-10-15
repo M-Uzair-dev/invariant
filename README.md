@@ -137,7 +137,7 @@ npm run test:crash    # builds the app first; about 2-3 minutes
 npm test              # both
 ```
 
-Optional settings: `WEBHOOK_WORKER_INTERVAL_MS` (0 disables the worker), `WEBHOOK_HTTP_TIMEOUT_MS`, `WEBHOOK_ALERT_INTERVAL_MS`, `RATE_LIMIT_GLOBAL_MAX`, `RATE_LIMIT_AUTH_MAX`, `RATE_LIMIT_WINDOW_MS`.
+Optional settings: `REDIS_TLS=true` (ElastiCache with in-transit encryption), `REDIS_USERNAME` / `REDIS_PASSWORD` (AUTH token or RBAC user), `WEBHOOK_WORKER_INTERVAL_MS` (0 disables the worker), `WEBHOOK_HTTP_TIMEOUT_MS`, `WEBHOOK_ALERT_INTERVAL_MS`, `RATE_LIMIT_GLOBAL_MAX`, `RATE_LIMIT_AUTH_MAX`, `RATE_LIMIT_WINDOW_MS`.
 
 ## Known limitations
 

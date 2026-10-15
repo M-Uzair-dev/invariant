@@ -1,9 +1,8 @@
 import { Module } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
-import { ConfigModule, ConfigService } from '@nestjs/config';
+import { ConfigModule } from '@nestjs/config';
 import { PrismaModule } from './utils/prisma/prisma.module';
-import { BullModule } from '@nestjs/bullmq';
 import { RedisModule } from './utils/redis/redis.module';
 import { AuthModule } from './auth/auth.module';
 import { StoreModule } from './store/store.module';
@@ -22,15 +21,6 @@ import { GlobalRateLimitGuard } from './utils/guards/rateLimit.guard';
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
-    }),
-    BullModule.forRootAsync({
-      inject: [ConfigService],
-      useFactory: (config: ConfigService) => ({
-        connection: {
-          host: config.getOrThrow<string>('REDIS_HOST'),
-          port: Number(config.getOrThrow('REDIS_PORT')),
-        },
-      }),
     }),
     ScheduleModule.forRoot(),
     PrismaModule,

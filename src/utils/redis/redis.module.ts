@@ -1,6 +1,7 @@
 import { Global, Inject, Module, OnModuleDestroy } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Redis } from 'ioredis';
+import { redisOptions } from './redis-options';
 
 @Global()
 @Module({
@@ -9,10 +10,7 @@ import { Redis } from 'ioredis';
       provide: 'REDIS_CLIENT',
       inject: [ConfigService],
       useFactory: (config: ConfigService) => {
-        return new Redis({
-          port: Number(config.getOrThrow('REDIS_PORT')),
-          host: config.getOrThrow('REDIS_HOST'),
-        });
+        return new Redis(redisOptions(config));
       },
     },
   ],
