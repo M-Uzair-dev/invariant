@@ -59,7 +59,6 @@ export class ReconciliationService {
           WHERE a."balanceCents" <> COALESCE(i.total_in, 0) - COALESCE(o.total_out, 0)
           ORDER BY a.id`;
 
-        
         const paymentProblems = await tx.$queryRaw<PaymentProblem[]>`
           SELECT p.id AS "paymentId",
                  p.status::text AS status,

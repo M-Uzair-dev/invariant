@@ -3,6 +3,7 @@ import {
   ExecutionContext,
   UnauthorizedException,
 } from '@nestjs/common';
+import type { Request } from 'express';
 import { UserType } from '../../types/userRolesType';
 
 export interface AuthUser {
@@ -13,7 +14,9 @@ export interface AuthUser {
 
 export const CurrentUser = createParamDecorator(
   (field: keyof AuthUser | undefined, ctx: ExecutionContext) => {
-    const request = ctx.switchToHttp().getRequest();
+    const request = ctx
+      .switchToHttp()
+      .getRequest<Request & { user?: AuthUser }>();
     const user = request.user;
     if (!user)
       throw new UnauthorizedException('Please login to access this service.');

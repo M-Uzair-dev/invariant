@@ -3,6 +3,7 @@ import {
   ExecutionContext,
   UnauthorizedException,
 } from '@nestjs/common';
+import type { Request } from 'express';
 
 export interface AuthStore {
   storeId: string;
@@ -11,7 +12,9 @@ export interface AuthStore {
 
 export const CurrentStore = createParamDecorator(
   (field: keyof AuthStore | undefined, ctx: ExecutionContext) => {
-    const request = ctx.switchToHttp().getRequest();
+    const request = ctx
+      .switchToHttp()
+      .getRequest<Request & { store?: AuthStore }>();
     const store = request.store;
     if (!store)
       throw new UnauthorizedException(

@@ -58,9 +58,7 @@ export class AccountService {
 
     try {
       return await this.prisma.$transaction(async (tx) => {
-        let transfer;
-
-        transfer = await tx.transfer.create({
+        const transfer = await tx.transfer.create({
           data: {
             amountCents,
             type: 'TOPUP',

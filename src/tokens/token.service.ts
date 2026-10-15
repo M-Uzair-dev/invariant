@@ -57,7 +57,7 @@ export class TokenService {
       const parsed: tokenPayload & {
         sessionKey: string;
       } = {
-        ...JSON.parse(data),
+        ...(JSON.parse(data) as tokenPayload),
         sessionKey: key,
       };
       parsed.expiresAt = new Date(parsed.expiresAt);

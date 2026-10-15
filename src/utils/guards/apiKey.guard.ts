@@ -6,13 +6,17 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { createHash } from 'crypto';
+import type { Request } from 'express';
+import { AuthStore } from '../decorators/store.param';
 
 @Injectable()
 export class ApiKeyGuard implements CanActivate {
   constructor(private readonly prisma: PrismaService) {}
   async canActivate(context: ExecutionContext): Promise<boolean> {
-    const req = context.switchToHttp().getRequest();
-    let token: string | null = req.headers['authorization'];
+    const req = context
+      .switchToHttp()
+      .getRequest<Request & { store?: AuthStore }>();
+    let token = req.headers['authorization'];
     if (!token || !token.startsWith('Bearer ')) {
       throw new UnauthorizedException('Api Key invalid.');
     }

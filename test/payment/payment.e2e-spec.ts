@@ -22,7 +22,9 @@ describe('Payments (e2e)', () => {
 
   beforeEach(async () => {
     await resetState(app);
-    store = await createStore(app, { webhookUrl: 'https://shop.example.com/hooks' });
+    store = await createStore(app, {
+      webhookUrl: 'https://shop.example.com/hooks',
+    });
   });
 
   afterAll(async () => {
