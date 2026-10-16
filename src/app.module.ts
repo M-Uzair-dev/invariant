@@ -21,6 +21,7 @@ import { GlobalRateLimitGuard } from './utils/guards/rateLimit.guard';
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
+      expandVariables: true, // DATABASE_URL is built from PG_* in .env
     }),
     ScheduleModule.forRoot(),
     PrismaModule,
