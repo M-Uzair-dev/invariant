@@ -21,6 +21,8 @@ ADD https://truststore.pki.rds.amazonaws.com/global/global-bundle.pem /certs/rds
 RUN chmod 755 /certs && chmod 644 /certs/rds-global-bundle.pem
 ENV NODE_EXTRA_CA_CERTS=/certs/rds-global-bundle.pem
 
+RUN cat /certs/rds-global-bundle.pem >> /etc/ssl/certs/ca-certificates.crt
+
 COPY package*.json ./
 RUN npm ci --omit=dev && npm cache clean --force
 

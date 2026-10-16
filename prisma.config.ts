@@ -7,19 +7,14 @@ import { defineConfig } from 'prisma/config';
 // expand: DATABASE_URL in .env is built from the PG_* vars
 expand(config({ quiet: true }));
 
-// DATABASE_URL uses node-postgres SSL params (the app connects through @prisma/adapter-pg).
-// The CLI (migrate deploy) uses Prisma's own Rust engine, which ignores sslrootcert and
-// treats verify-full as `prefer`. Its equivalents: sslmode=require + sslcert=<CA file>
-// + sslaccept=strict. strict must be explicit: without it the engine accepted a cert
-// from the wrong CA (tested against a local TLS Postgres).
 function toPrismaCliUrl(url: string | undefined): string | undefined {
   if (!url) return url;
   const u = new URL(url);
-  const rootCert = u.searchParams.get('sslrootcert');
-  if (!rootCert) return url;
+  if (!u.searchParams.has('sslrootcert')) return url;
+  // Prisma's migration engine ignores sslrootcert; it trusts the RDS CAs through
+  // the system store instead (added in the Dockerfile). strict = verify the cert.
   u.searchParams.delete('sslrootcert');
   u.searchParams.set('sslmode', 'require');
-  u.searchParams.set('sslcert', rootCert);
   u.searchParams.set('sslaccept', 'strict');
   return u.toString();
 }
