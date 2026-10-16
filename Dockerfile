@@ -24,9 +24,15 @@ ENV NODE_EXTRA_CA_CERTS=/certs/rds-global-bundle.pem
 COPY package*.json ./
 RUN npm ci --omit=dev && npm cache clean --force
 
+# Migrations + CLI config, so the container can run `prisma migrate deploy` on start
+COPY prisma ./prisma
+COPY prisma.config.ts ./
+
 # The Prisma client is generated into src/generated, so it's compiled into dist
 COPY --from=build /app/dist ./dist
 
 USER node
 EXPOSE 3000
-CMD ["node", "dist/src/main.js"]
+# Apply pending migrations, then start. exec replaces the shell with node, so
+# docker stop's SIGTERM reaches node directly and enableShutdownHooks runs.
+CMD ["sh", "-c", "./node_modules/.bin/prisma migrate deploy && exec node dist/src/main.js"]
